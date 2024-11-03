@@ -12,12 +12,26 @@ async def lifespan(app):
 
 app = FastAPI(lifespan=lifespan)
 
-class Tasks(SQLModel, table=True):
-    id: Optional[int] = Field(default=None, primary_key=True) 
+
+
+class TaskBase(SQLModel):
     title: str = Field(index=True)
-    desc: Optional[str] = Field(default=None, index=True)  
+    desc: Optional[str] = Field(default=None, index=True)
+
+class Tasks(TaskBase, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True) 
     secret_name: str
 
+class TaskPublic(TaskBase):
+    id: int  
+
+class TaskCreate(TaskBase):
+    secret_name: str
+
+class TaskUpdate(TaskBase):
+    title: Optional[str]  = None
+    desc: Optional[int] = None
+    secret_name: Optional[str] = None
 
 
 sqlite_file_name = "database.db"
@@ -37,16 +51,15 @@ def get_session():
 
 SessionDep = Annotated[Session, Depends(get_session)]
 
+@app.post("/tasks/", response_model= TaskPublic)
+def create_task(task: TaskCreate, session: SessionDep):
 
-
-
-
-@app.post("/tasks/")
-def create_task(task: Tasks, session: SessionDep) -> Tasks:
-    session.add(task)
+    db_task = Tasks.model_validate(task)
+    session.add(db_task)
     session.commit()
-    session.refresh(task)
-    return task
+    session.refresh(db_task)
+    return db_task
+
 
 @app.get("/tasks/")
 def read_tasks(
