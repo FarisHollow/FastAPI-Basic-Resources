@@ -61,14 +61,23 @@ def create_task(task: TaskCreate, session: SessionDep):
     return db_task
 
 
-@app.get("/tasks/")
+@app.get("/tasks/", response_model=list[TaskPublic])
 def read_tasks(
     session: SessionDep,
     offset: int = 0,
     limit: Annotated[int, Query(le=100)] = 100,
-) -> list[Tasks]:
+):
     tasks = session.exec(select(Tasks).offset(offset).limit(limit)).all()
     return tasks
+
+# @app.get("/tasks/")
+# def read_tasks(
+#     session: SessionDep,
+#     offset: int = 0,
+#     limit: Annotated[int, Query(le=100)] = 100,
+# ) -> list[Tasks]:
+#     tasks = session.exec(select(Tasks).offset(offset).limit(limit)).all()
+#     return tasks
 
 
 
