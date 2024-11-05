@@ -30,7 +30,7 @@ class TaskCreate(TaskBase):
 
 class TaskUpdate(TaskBase):
     title: Optional[str]  = None
-    desc: Optional[int] = None
+    desc: Optional[str] = None
     secret_name: Optional[str] = None
 
 
@@ -70,23 +70,32 @@ def read_tasks(
     tasks = session.exec(select(Tasks).offset(offset).limit(limit)).all()
     return tasks
 
-# @app.get("/tasks/")
-# def read_tasks(
-#     session: SessionDep,
-#     offset: int = 0,
-#     limit: Annotated[int, Query(le=100)] = 100,
-# ) -> list[Tasks]:
-#     tasks = session.exec(select(Tasks).offset(offset).limit(limit)).all()
-#     return tasks
 
 
-
-@app.get("/tasks/{task_id}")
-def read_task(task_id: int, session: SessionDep) -> Tasks:
+@app.get("/tasks/{task_id}", response_model=TaskPublic)
+def read_oneTask(task_id: int, session: SessionDep):
     task = session.get(Tasks, task_id)
     if not task:
-        raise HTTPException(status_code=404, detail="Task not found")
+        raise HTTPException(status_code=404, detail="task not found")
     return task
+
+
+
+
+
+
+@app.patch("/tasks/{task_id}", response_model=TaskPublic)
+def update_oneTask(task_id: int, task: TaskUpdate,  session: SessionDep):
+    task_db = session.get(Tasks, task_id)
+    if not task_db:
+        raise HTTPException(status_code=404, detail="task not found")
+    task_data = task.model_dump(exclude_unset=True)
+    task_db.sqlmodel_update(task_data)
+    session.add(task_db)
+    session.commit()
+    session.refresh(task_db)
+    return task_db
+
 
 
 
@@ -94,15 +103,10 @@ def read_task(task_id: int, session: SessionDep) -> Tasks:
 def delete_task(task_id: int, session: SessionDep):
     task = session.get(Tasks, task_id)
     if not task:
-        raise HTTPException(status_code=404, detail="Task not found")
+        raise HTTPException(status_code=404, detail="task not found")
     session.delete(task)
     session.commit()
     return {"ok": True}
-
-
-
-
-
 
 # class Task(BaseModel):
 
