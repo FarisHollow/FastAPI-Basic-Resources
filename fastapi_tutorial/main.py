@@ -1,8 +1,9 @@
 from typing import Annotated
-from fastapi import Depends, FastAPI, HTTPException, Query
+from fastapi import Depends, FastAPI, HTTPException, Query, Form
 from typing import Optional
 from sqlmodel import Field, Session, SQLModel, create_engine, select
 import contextlib 
+from pydantic import  EmailStr
 
 
 @contextlib.asynccontextmanager
@@ -13,6 +14,27 @@ async def lifespan(app):
 app = FastAPI(lifespan=lifespan)
 
 
+class UserBase(SQLModel):
+    username: str = Field(index=True, nullable=False)  
+    email: EmailStr = Field(index=True, nullable=False) 
+    address: Optional[str] = Field(nullable=False) 
+
+class Users(UserBase, table= True):
+    id: int = Field(default=None, primary_key=True)
+    password: str = Field(nullable=False)  
+    
+
+class UserPublic(UserBase):
+    id: int
+
+class SignUp(UserBase):
+    password: str
+
+class Login(SQLModel):
+    username: str
+    password: str
+
+#Task
 
 class TaskBase(SQLModel):
     title: str = Field(index=True)
@@ -50,6 +72,61 @@ def get_session():
 
 
 SessionDep = Annotated[Session, Depends(get_session)]
+
+
+@app.post("/signup/", response_model=UserPublic)
+async def signup(*,
+    username: str = Form(...),
+    email: EmailStr = Form(...),
+    password: str = Form(...),
+    address: str = Form(...),
+    session: SessionDep
+):
+
+    # db_user = Users.model_validate(username, email, password, address)
+    db_user = Users(username=username, email=email, password=password, address=address)
+    session.add(db_user)
+    session.commit()
+    session.refresh(db_user)
+    return {"msg": "User registered", "user_id": db_user.id}
+
+# @app.post("/signup/", response_model= UserPublic)
+# async def signup(signup: Annotated[SignUp, Form()], session: SessionDep):
+#     db_user = Users.model_validate(signup)
+#     session.add(db_user)
+#     session.commit()
+#     session.refresh(db_user)
+#     return db_user
+
+
+
+@app.post("/login/")
+async def login(login: Login, session: SessionDep):
+    
+    db_user = session.exec(select(Users).where(Users.username == login.username)).first()
+    
+    if not db_user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    if not login.password != db_user.password:
+        raise HTTPException(status_code=400, detail="Incorrect password")
+    
+    return {"msg": "Login successful"}
+
+
+@app.get("/users/", response_model=list[UserPublic])
+def getUsers(
+    session: SessionDep,
+    offset: int = 0,
+    limit: Annotated[int, Query(le=100)] = 100,
+):
+    users = session.exec(select(Users).offset(offset).limit(limit)).all()
+    return users
+
+
+
+
+#Task    
 
 @app.post("/tasks/", response_model= TaskPublic)
 def create_task(task: TaskCreate, session: SessionDep):
@@ -107,35 +184,4 @@ def delete_task(task_id: int, session: SessionDep):
     session.delete(task)
     session.commit()
     return {"ok": True}
-
-# class Task(BaseModel):
-
-#     id: int
-#     title: str
-#     description: Optional[str] = None
-
-
-
-
-
-# @app.post("/items/{id}")
-# async def create_item(*, id: int = Path(gt = 0), task: Task):
-#     tasks[id] = {
-#         "task": task,
-#         "description": task.description
-#     }
-#     return {"message": "Task added successfully", "task": {"id": id, "title": task.title, "description": task.description}}
-
-
-
-
-# @app.get("/view_tasks")
-# async def viewTasks():
-#     return {"Tasks are ": tasks}
-
-
-# @app.get("/view_task/{id}")
-# async def viewTasks():
-#     return {"Tasks are ": tasks}
-
 
