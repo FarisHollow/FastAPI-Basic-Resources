@@ -24,7 +24,7 @@ async def apiCall(req: ChatRequest):
     response = openai.chat.completions.create(
         model="gpt-3.5-turbo",
         messages= [
-            { "role": "system", "content": "You're a great problem solver about programming and coding"},
+            { "role": "system", "content": "You're a great problem solver about medicine"},
             { "role": "user", "content": req.text},
         ],
     )      
