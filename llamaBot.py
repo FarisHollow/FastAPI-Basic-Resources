@@ -6,29 +6,42 @@ import openai
 import os
 from llama_index.core import VectorStoreIndex, SimpleDirectoryReader, StorageContext, load_index_from_storage
 from fastapi.staticfiles import StaticFiles
-import logging
+from llama_index.agent.openai import OpenAIAgent
+from llama_index.core.storage.chat_store import SimpleChatStore
+from llama_index.core.memory import ChatMemoryBuffer
 
 app = FastAPI()
 app.mount("/view/chat", StaticFiles(directory="view/chat"), name="static")
+
 
 load_dotenv()
 
 openai.api_key = os.getenv("api_key")
 
+chat_store = SimpleChatStore()
+
+chat_memory = ChatMemoryBuffer.from_defaults(
+    token_limit=3000,
+    chat_store=chat_store,
+    chat_store_key="user1",
+)
 
 if not openai.api_key:
     raise Exception("OpenAI API key not found. Please add it to your .env file.")
 
 PERSIST_DIR = "./storage"
 
+documents = SimpleDirectoryReader("data").load_data()
 if not os.path.exists(PERSIST_DIR):
- documents = SimpleDirectoryReader("data").load_data()
+
  index = VectorStoreIndex.from_documents(documents)
  index.storage_context.persist(persist_dir=PERSIST_DIR)
 
 else:
     storage_context = StorageContext.from_defaults(persist_dir=PERSIST_DIR)
     index = load_index_from_storage(storage_context)
+
+
 
 class ChatRequest (BaseModel):
     text: str
@@ -41,23 +54,26 @@ class chatResponse (BaseModel):
 
 
 
-
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
     print("WebSocket connection established.")
     
     try:
-      
+        while True:
             data = await websocket.receive_text() 
             print(f"User: {data}")
             await websocket.send_text(f"User: {data}")
 
 
-            query_engine = index.as_query_engine()
-            response = str(query_engine.query(data))
+            chat_engine = index.as_chat_engine(memory = chat_memory)
+            response = str(chat_engine.chat(data))
+            chat_store.persist(persist_path="chat_store.json")
+            print(f"User: {response}")
             await websocket.send_text(f"Reply: {response}")
-            print(f"Reply: {response}")
+            
+
+        
 
     except WebSocketDisconnect as e:
         print(f"WebSocket disconnected: {e}")
