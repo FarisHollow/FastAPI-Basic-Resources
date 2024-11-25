@@ -18,13 +18,8 @@ load_dotenv()
 
 openai.api_key = os.getenv("api_key")
 
-chat_store = SimpleChatStore()
 
-chat_memory = ChatMemoryBuffer.from_defaults(
-    token_limit=3000,
-    chat_store=chat_store,
-    chat_store_key="user1",
-)
+
 
 if not openai.api_key:
     raise Exception("OpenAI API key not found. Please add it to your .env file.")
@@ -50,8 +45,19 @@ class chatResponse (BaseModel):
     reply: str
 
 
-# ws =  WebSocket("ws://localhost:8000/ws")
+chat_store_path = "chat_store.json"
 
+if os.path.exists(chat_store_path):
+    chat_store = SimpleChatStore.from_persist_path(persist_path=chat_store_path)
+else:
+    chat_store = SimpleChatStore()
+
+
+chat_memory = ChatMemoryBuffer.from_defaults(
+    token_limit=3000,
+    chat_store=chat_store,
+    chat_store_key="user1",
+)
 
 
 @app.websocket("/ws")
@@ -68,7 +74,7 @@ async def websocket_endpoint(websocket: WebSocket):
 
             chat_engine = index.as_chat_engine(memory = chat_memory)
             response = str(chat_engine.chat(data))
-            chat_store.persist(persist_path="chat_store.json")
+            chat_store.persist(persist_path=chat_store_path)
             print(f"User: {response}")
             await websocket.send_text(f"Reply: {response}")
             
