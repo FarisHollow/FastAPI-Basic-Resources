@@ -1,16 +1,8 @@
    
-from schemas import Token, TokenData, UserBase, UserPublic, Users, SignUp, ProfileUpdate, TaskBase, TaskCreate, TaskPublic, Tasks, TaskUpdate
-from typing import Annotated, Optional
-from fastapi import Depends, APIRouter, HTTPException, Query, Form, status
-from sqlmodel import Field, Session, SQLModel, create_engine, select
-import contextlib 
-from passlib.context import CryptContext
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-from datetime import datetime, timedelta, timezone
-from jose import jwt
-from jwt.exceptions import InvalidTokenError
-from fastapi.encoders import jsonable_encoder
-from pydantic import EmailStr
+from schemas import TaskCreate, TaskPublic, Tasks, TaskUpdate
+from typing import Annotated
+from fastapi import Depends, APIRouter, HTTPException, Query
+from sqlmodel import  select
 from utility import get_current_active_user, SessionDep
 
 router= APIRouter()

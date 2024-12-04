@@ -38,13 +38,6 @@ else:
 
 
 
-class ChatRequest (BaseModel):
-    text: str
-
-class chatResponse (BaseModel):
-    reply: str
-
-
 chat_store_path = "chat_store.json"
 
 if os.path.exists(chat_store_path):
@@ -93,35 +86,4 @@ async def get():
 
 
 
-
-# @app.post("/chat", response_model=chatResponse)
-# async def apiCall(req: ChatRequest):
-
-#  try:
-  
-#     query_engine = index.as_query_engine()
-#     response = str(query_engine.query(req.text))
-
-#     return JSONResponse(content={"reply": response})
- 
-#  except Exception as e:
-        
-#         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
-
-
-
-
-# while True:
-#     text_input = input("User: ")
-#     if text_input == "exit":
-#         break
-#     query_engine = index.as_query_engine()
-
-#     response = str(query_engine.query(text_input))
-
-#     def on_open(ws):
-#         ws.send(response)
-
-    
-#     print(f"Agent: {response}")
 
