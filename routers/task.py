@@ -10,7 +10,7 @@ router= APIRouter()
 # Task CRUD Endpoints
 @router.post("/tasks/", response_model=TaskPublic)
 async def create_task(task: TaskCreate, auth: Annotated[TaskPublic, Depends(get_current_active_user)], session: SessionDep):
-    db_task = Tasks(**task.dict(), user_id=auth.id)
+    db_task = Tasks(**task.model_dump(), user_id=auth.id)
     session.add(db_task)
     session.commit()
     session.refresh(db_task)
@@ -27,6 +27,7 @@ async def read_tasks(session: SessionDep, auth: Annotated[TaskPublic, Depends(ge
 
 @router.get("/tasks/{task_id}", response_model=TaskPublic)
 async def read_task(task_id: int, auth: Annotated[TaskPublic, Depends(get_current_active_user)], session: SessionDep):
+    
     task = session.get(Tasks, task_id)
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
